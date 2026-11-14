@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STA LLM Wiki — FPGA 靜態時序分析</title>
+<style>
+body { margin:0; font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif; background:#0f1b2d; color:#e8eef6; line-height:1.7; }
+main { max-width:900px; margin:0 auto; padding:3rem 1.5rem; }
+h1 { font-size:2.3rem; margin:.2rem 0; } .sub { color:#9fb1c8; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1rem; margin-top:2rem; }
+.cards a { display:block; background:#16263d; border-radius:12px; padding:1.2rem 1.4rem; color:#e8eef6; text-decoration:none; border-top:4px solid #f2a541; }
+.cards a:hover { background:#1d3150; }
+.cards b { font-size:1.15rem; display:block; margin-bottom:.3rem; }
+.cards span { color:#9fb1c8; font-size:.95rem; }
+pre { background:#16263d; padding:1rem; border-radius:8px; color:#c8d6e8; overflow-x:auto; }
+footer { color:#6f8299; font-size:.85rem; margin-top:3rem; }
+</style>
+</head>
+<body>
+<main>
+  <p class="sub">LLM Wiki × 教學 HTML 簡報</p>
+  <h1>FPGA 靜態時序分析（STA）</h1>
+  <p class="sub">先把 5 篇資料 ingest 成有引用的 LLM Wiki，再只用 wiki 當知識來源，生成一份給初學者的教學簡報。</p>
+  <div class="cards">
+    <a href="slides/"><b>🎞 教學簡報</b><span>15 張，← → 翻頁：setup、hold、slack、Vivado 報告與修法</span></a>
+    <a href="wiki.html?p=wiki/index.md"><b>📚 LLM Wiki</b><span>7 個概念頁，每條重點都附來源 S1–S5</span></a>
+    <a href="wiki.html?p=docs/workflow.md"><b>🔁 Loop / Graph</b><span>流程圖、實際執行與檢查紀錄、反思</span></a>
+    <a href="wiki.html?p=CLAUDE.md"><b>📜 CLAUDE.md</b><span>wiki 的 schema：結構、格式、操作規則</span></a>
+  </div>
+  <h2 style="margin-top:2.5rem">三層架構</h2>
+<pre>raw/  (5 篇來源擷取，不可改)
+  │  ingest：擷取 → 驗證 → 寫 raw
+  ▼
+wiki/ (AI 維護：index.md、log.md、concepts/*.md)
+  │  query：讀 index → 取相關頁
+  ▼
+slides/index.html (每張標 data-wiki，每個數字由 lint 重算)</pre>
+  <footer>Repo：<a href="https://github.com/Bmy-hi/sta-llm-wiki" style="color:#f2a541">github.com/Bmy-hi/sta-llm-wiki</a> · 檢查：python3 tools/lint.py</footer>
+</main>
+</body>
+</html>
