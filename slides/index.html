@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STA 入門：你的電路跑得到多快？</title>
+<style>
+:root { --bg:#0f1b2d; --card:#16263d; --text:#e8eef6; --muted:#9fb1c8; --accent:#f2a541; --ok:#5fd18b; --bad:#ff7a6b; --blue:#6cb6ff; }
+* { box-sizing:border-box; }
+html,body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif; }
+.deck { height:100%; position:relative; overflow:hidden; }
+.slide { position:absolute; inset:0; padding:6vh 7vw 9vh; display:none; flex-direction:column; justify-content:center; }
+.slide.active { display:flex; }
+h1 { font-size:clamp(28px,5vw,58px); margin:.2em 0; line-height:1.2; }
+h2 { font-size:clamp(22px,3.4vw,40px); margin:0 0 .6em; color:var(--accent); }
+p, li { font-size:clamp(16px,2vw,24px); line-height:1.6; }
+li { margin:.25em 0; }
+.sub { color:var(--muted); font-size:clamp(16px,2vw,24px); }
+.box { background:var(--card); border-radius:14px; padding:1em 1.4em; margin:.6em 0; }
+.formula { font-family:"JetBrains Mono",Consolas,monospace; font-size:clamp(15px,1.9vw,23px); background:#0b1422; border-left:5px solid var(--accent); padding:.8em 1.1em; border-radius:8px; line-height:1.7; white-space:pre-wrap; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1.2em; }
+.ok { color:var(--ok); font-weight:700; }
+.bad { color:var(--bad); font-weight:700; }
+.blue { color:var(--blue); font-weight:700; }
+.acc { color:var(--accent); font-weight:700; }
+table { border-collapse:collapse; font-size:clamp(14px,1.8vw,22px); }
+td, th { border:1px solid #2e4566; padding:.35em .8em; text-align:left; }
+th { background:#1d3150; }
+svg { max-width:100%; height:auto; }
+.src { position:absolute; left:7vw; bottom:3.2vh; color:var(--muted); font-size:13px; }
+.nav { position:absolute; right:3vw; bottom:2.4vh; display:flex; gap:.5em; align-items:center; color:var(--muted); font-size:14px; z-index:5; }
+.nav button { background:var(--card); color:var(--text); border:1px solid #2e4566; border-radius:8px; padding:.35em .9em; font-size:16px; cursor:pointer; }
+.bar { position:absolute; left:0; top:0; height:4px; background:var(--accent); transition:width .25s; z-index:5; }
+details { margin:.4em 0; }
+summary { cursor:pointer; color:var(--accent); font-size:clamp(16px,2vw,24px); }
+@media (max-width:700px) { .grid2 { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="deck">
+<div class="bar" id="bar"></div>
+
+<section class="slide" data-wiki="sta-overview.md">
+  <p class="sub">教學簡報 · 由 STA LLM Wiki 產生</p>
+  <h1>你的電路<br>跑得到多快？</h1>
+  <p class="sub">FPGA 靜態時序分析（STA）入門：看懂 setup、hold、slack 與 Vivado 時序報告</p>
+  <p class="sub" style="margin-top:2em">← → 或空白鍵翻頁</p>
+</section>
+
+<section class="slide" data-wiki="sta-overview.md,clock-constraints.md">
+  <h2>為什麼需要 STA？</h2>
+  <div class="box">
+    <p>模擬只檢查「你給的輸入」；STA <b>不跑模擬</b>，把每一條暫存器到暫存器的路徑延遲加起來，檢查每一條都來得及。</p>
+  </div>
+  <ul>
+    <li>每條路徑都做兩種檢查：<span class="blue">setup</span>（用最大延遲）與 <span class="acc">hold</span>（用最小延遲）</li>
+    <li>前提：你要先用 <b>create_clock</b> 告訴工具時脈多快</li>
+    <li>Vivado 實作完一定會產生的報告：<b>Timing Summary</b></li>
+  </ul>
+</section>
+
+<section class="slide" data-wiki="setup-hold.md">
+  <h2>Setup 與 Hold：正反器的兩條規矩</h2>
+  <svg viewBox="0 0 640 210" role="img" aria-label="時脈上升緣前後的 setup 與 hold 時間窗">
+    <text x="10" y="45" fill="#9fb1c8" font-size="16">clk</text>
+    <polyline points="60,70 260,70 260,20 460,20 460,70 620,70" fill="none" stroke="#e8eef6" stroke-width="3"/>
+    <text x="10" y="150" fill="#9fb1c8" font-size="16">D</text>
+    <polygon points="60,120 170,120 185,160 60,160" fill="#3a2530"/>
+    <polygon points="185,120 340,120 340,160 185,160" fill="#1f3d2d"/>
+    <polygon points="340,120 355,160 620,160 620,120" fill="#3a2530"/>
+    <text x="235" y="146" fill="#e8eef6" font-size="15">資料必須穩定</text>
+    <rect x="200" y="175" width="60" height="10" fill="#6cb6ff"/>
+    <text x="196" y="205" fill="#6cb6ff" font-size="15">setup</text>
+    <rect x="260" y="175" width="35" height="10" fill="#f2a541"/>
+    <text x="270" y="205" fill="#f2a541" font-size="15">hold</text>
+    <line x1="260" y1="10" x2="260" y2="190" stroke="#f2a541" stroke-dasharray="4 4"/>
+  </svg>
+  <div class="grid2">
+    <div class="box"><span class="blue">Setup time</span>：上升緣<b>之前</b>，D 要先穩定 tSU。看<b>最慢</b>的路徑。</div>
+    <div class="box"><span class="acc">Hold time</span>：上升緣<b>之後</b>，D 要再維持 tH（常常是 0）。看<b>最快</b>的路徑。</div>
+  </div>
+  <p>違反任一個 → 可能 <b>metastability</b>：輸出卡在中間電位很久才穩定。</p>
+</section>
+
+<section class="slide" data-wiki="sta-overview.md,clock-skew-uncertainty.md">
+  <h2>一條 Timing Path 長什麼樣子</h2>
+  <svg viewBox="0 0 660 220" role="img" aria-label="launch 正反器經組合邏輯到 capture 正反器">
+    <rect x="30" y="60" width="90" height="80" rx="6" fill="#16263d" stroke="#6cb6ff" stroke-width="2"/>
+    <text x="45" y="105" fill="#e8eef6" font-size="16">Launch FF</text>
+    <rect x="250" y="70" width="150" height="60" rx="30" fill="#16263d" stroke="#f2a541" stroke-width="2"/>
+    <text x="270" y="106" fill="#e8eef6" font-size="16">組合邏輯 tPD</text>
+    <rect x="530" y="60" width="100" height="80" rx="6" fill="#16263d" stroke="#6cb6ff" stroke-width="2"/>
+    <text x="540" y="105" fill="#e8eef6" font-size="16">Capture FF</text>
+    <line x1="120" y1="100" x2="250" y2="100" stroke="#e8eef6" stroke-width="2"/>
+    <line x1="400" y1="100" x2="530" y2="100" stroke="#e8eef6" stroke-width="2"/>
+    <text x="135" y="90" fill="#9fb1c8" font-size="14">tCO</text>
+    <path d="M10,200 L75,200 L75,140" fill="none" stroke="#5fd18b" stroke-width="2"/>
+    <path d="M75,200 L580,200 L580,140" fill="none" stroke="#5fd18b" stroke-width="2"/>
+    <text x="230" y="192" fill="#5fd18b" font-size="14">clk：到兩邊的延遲不同 → skew</text>
+  </svg>
+  <ul>
+    <li><b>launch 時脈路徑</b> → <b>資料路徑</b>（tCO + 組合邏輯）→ <b>capture 時脈路徑</b></li>
+    <li>skew = 目的端時脈延遲 − 來源端時脈延遲</li>
+  </ul>
+</section>
+
+<section class="slide" data-wiki="slack.md">
+  <h2>Slack：你還剩多少時間？</h2>
+  <div class="formula">Setup slack = required − arrival
+           = T − datapath(max) + skew − uncertainty − tSU
+
+Hold slack  = arrival − required
+           = datapath(min) − skew − uncertainty − tH</div>
+  <ul>
+    <li><span class="ok">slack ≥ 0</span> → 過；<span class="bad">slack &lt; 0</span> → 違規</li>
+    <li>同一個時脈：setup 的要求是<b>一個週期</b>，hold 的要求是 <b>0</b></li>
+  </ul>
+</section>
+
+<section class="slide" data-wiki="slack.md">
+  <h2>算一題：50 MHz 跑得動嗎？</h2>
+  <p>T = 20 ns（50 MHz）、tCO = 2 ns、tPD(max) = 15 ns、要求 tSU = 5 ns</p>
+  <div class="formula">可用 setup 時間 = 20 − 2 − 15 = <span data-calc="20-2-15">3</span> ns
+slack        = 3 − 5     = <span class="bad"><span data-calc="20-2-15-5">−2</span> ns</span> → 不過！
+最小週期     = 2 + 15 + 5 = <span data-calc="2+15+5">22</span> ns
+fmax         = 1000 / 22 ≈ <span data-calc="1000/22">45.45</span> MHz</div>
+  <p>要嘛降到約 45 MHz，要嘛把 15 ns 的組合邏輯變短。</p>
+</section>
+
+<section class="slide" data-wiki="slack.md,clock-skew-uncertainty.md">
+  <h2>看工具怎麼算（setup）</h2>
+  <p>T = 10 ns，來源端時脈延遲 2.0、datapath(max) 7.2、目的端時脈延遲 1.8、uncertainty 0.1、tSU 0.05</p>
+  <table>
+    <tr><th>arrival</th><td>0 + 2.0 + 7.2</td><td>= <span data-calc="0+2.0+7.2">9.2</span> ns</td></tr>
+    <tr><th>required</th><td>10 + 1.8 − 0.1 − 0.05</td><td>= <span data-calc="10+1.8-0.1-0.05">11.65</span> ns</td></tr>
+    <tr><th>slack</th><td>11.65 − 9.2</td><td class="ok">= +<span data-calc="11.65-9.2">2.45</span> ns ✔</td></tr>
+  </table>
+  <p>用簡化式驗算：10 − 7.2 + (−0.2) − 0.1 − 0.05 = <span data-calc="10-7.2+(-0.2)-0.1-0.05">2.45</span> ns，一致。</p>
+</section>
+
+<section class="slide" data-wiki="slack.md,clock-skew-uncertainty.md">
+  <h2>Hold：快也是一種錯</h2>
+  <p>來源端時脈延遲 1.9、datapath(min) 0.3、目的端時脈延遲 2.1、uncertainty 0.05、tH 0.1</p>
+  <div class="formula">arrival  = 1.9 + 0.3          = <span data-calc="1.9+0.3">2.2</span> ns
+required = 2.1 + 0.05 + 0.1   = <span data-calc="2.1+0.05+0.1">2.25</span> ns
+slack    = 2.2 − 2.25         = <span class="bad"><span data-calc="2.2-2.25">−0.05</span> ns</span></div>
+  <div class="box">兇手是 skew = 2.1 − 1.9 = <b>+0.2 ns</b>：capture 端時脈晚到，資料卻太早變。<br><b>正 skew 幫 setup、害 hold。</b></div>
+</section>
+
+<section class="slide" data-wiki="timing-report.md">
+  <h2>看懂 Vivado Timing Summary</h2>
+  <table>
+    <tr><th>指標</th><th>意思</th><th>過的條件</th></tr>
+    <tr><td>WNS</td><td>setup 最差的 slack（可以是正的！）</td><td>≥ 0</td></tr>
+    <tr><td>TNS</td><td>每個終點的 setup 違規值加總</td><td>= 0</td></tr>
+    <tr><td>WHS</td><td>hold 最差的 slack</td><td>≥ 0</td></tr>
+    <tr><td>THS</td><td>每個終點的 hold 違規值加總</td><td>= 0</td></tr>
+  </table>
+  <p>例：三個終點 slack = −0.3、−0.1、+0.5 → WNS = −0.3，TNS = <span data-calc="-0.3+(-0.1)">−0.4</span> ns（正的不算）</p>
+</section>
+
+<section class="slide" data-wiki="clock-constraints.md">
+  <h2>先把時脈告訴工具：create_clock</h2>
+  <div class="formula"># 100 MHz、50% duty 的板子時脈
+create_clock -name sys_clk -period 10 [get_ports clk]
+
+# 用暫存器 REGA 除 2 得到的時脈
+create_generated_clock -name clkdiv2 -source [get_ports clk] \
+    -divide_by 2 [get_pins REGA/Q]</div>
+  <ul>
+    <li>period 單位是 ns：100 MHz ↔ <span data-calc="1000/100">10</span> ns</li>
+    <li>除頻出來的時脈用 generated clock，<b>不要</b>再給 period</li>
+    <li>差動時脈只在正端定義</li>
+  </ul>
+</section>
+
+<section class="slide" data-wiki="fixing-violations.md">
+  <h2>修 Setup：讓路徑變短</h2>
+  <ul>
+    <li>主因通常是 <b>datapath delay</b>（邏輯層數太多）</li>
+    <li><b>Pipelining</b>：把長路徑切兩段，越早規劃越好</li>
+    <li><b>Retiming</b>：把暫存器移到邏輯多的那一段，平衡各段</li>
+    <li>降頻也能過，但那是「放寬要求」，不是修好</li>
+  </ul>
+  <div class="box">剛剛 15 ns 的路徑切成 8 + 7：最慢一段 slack = 20 − 2 − 8 − 5 = <span class="ok">+<span data-calc="20-2-8-5">5</span> ns</span>，代價是多 1 個週期 latency。</div>
+</section>
+
+<section class="slide" data-wiki="fixing-violations.md,clock-skew-uncertainty.md">
+  <h2>修 Hold：讓路徑變慢一點</h2>
+  <ul>
+    <li>主因通常是 <b>clock skew</b></li>
+    <li>小違規：router 繞線自動修</li>
+    <li>大違規（約 &gt; 0.4 ns）：佈線前插入 <b>LUT1 延遲</b>（前提：setup 還有餘裕）</li>
+    <li><span class="bad">降頻修不了 hold</span>——hold 式子裡沒有 T</li>
+  </ul>
+  <div class="box">剛剛 −0.05 ns 的路徑插入 0.2 ns 延遲：0.5 − 0.2 − 0.05 − 0.1 = <span class="ok">+<span data-calc="0.5-0.2-0.05-0.1">0.15</span> ns</span></div>
+</section>
+
+<section class="slide" data-wiki="sta-overview.md,slack.md,fixing-violations.md">
+  <h2>重點整理</h2>
+  <ol>
+    <li>STA 不跑模擬，檢查<b>每一條</b>路徑的 setup（最慢）與 hold（最快）。</li>
+    <li>slack = 要求與到達的差，<b>≥ 0 才算過</b>。</li>
+    <li>正 skew <span class="ok">幫 setup</span>、<span class="bad">害 hold</span>。</li>
+    <li>報告看 WNS / WHS ≥ 0、TNS / THS = 0。</li>
+    <li>setup 不過 → 縮短路徑；hold 不過 → 加延遲；降頻只救得了 setup。</li>
+  </ol>
+</section>
+
+<section class="slide" data-wiki="setup-hold.md,timing-report.md,fixing-violations.md">
+  <h2>小測驗（點開看答案）</h2>
+  <details><summary>Q1. WNS = +0.8 ns、WHS = −0.2 ns，這個設計過了嗎？</summary><p>沒過。setup 過了，但 hold 有違規（WHS &lt; 0）。</p></details>
+  <details><summary>Q2. hold 違規時，把時脈從 100 MHz 降到 50 MHz 有用嗎？</summary><p>沒用。hold 條件裡沒有週期 T，降頻不會改變 hold slack。</p></details>
+  <details><summary>Q3. T = 10 ns、tCO = 1、tPD = 8.5、tSU = 0.3，setup slack？</summary><p>10 − 1 − 8.5 − 0.3 = <span data-calc="10-1-8.5-0.3">0.2</span> ns，過。</p></details>
+  <details><summary>Q4. 三個終點 setup slack = −0.5、−0.2、+1.0，TNS？</summary><p>TNS = −0.5 + (−0.2) = <span data-calc="-0.5+(-0.2)">−0.7</span> ns。</p></details>
+</section>
+
+<section class="slide" data-wiki="sta-overview.md">
+  <h2>資料來源（wiki 的 raw/）</h2>
+  <ul style="font-size:clamp(14px,1.6vw,19px)">
+    <li>S1 — Ed Casas, UBC ELEX 2117, Static Timing Analysis（2025）</li>
+    <li>S2 — Patrick Schaumont, WPI ECE 574, Timing Analysis（2023）</li>
+    <li>S3 — AMD UG906, Vivado Design Analysis and Closure Techniques</li>
+    <li>S4 — AMD UG903, Vivado Using Constraints</li>
+    <li>S5 — AMD UG949, UltraFast Design Methodology Guide</li>
+  </ul>
+  <p class="sub">每張投影片的內容都對應到 wiki 的概念頁（見原始碼中的 data-wiki 屬性）。</p>
+</section>
+
+<div class="src" id="src"></div>
+<div class="nav"><button id="prev" aria-label="上一張">←</button><span id="count"></span><button id="next" aria-label="下一張">→</button></div>
+</div>
+<script>
+(function () {
+    var slides = document.querySelectorAll('.slide');
+    var i = 0;
+    var m = location.hash.match(/^#(\d+)$/);
+    if (m) i = Math.min(Math.max(parseInt(m[1], 10) - 1, 0), slides.length - 1);
+    function show(n) {
+        i = Math.min(Math.max(n, 0), slides.length - 1);
+        for (var k = 0; k < slides.length; k++) slides[k].classList.toggle('active', k === i);
+        document.getElementById('count').textContent = (i + 1) + ' / ' + slides.length;
+        document.getElementById('bar').style.width = ((i + 1) / slides.length * 100) + '%';
+        document.getElementById('src').textContent = '📚 wiki：' + slides[i].getAttribute('data-wiki').split(',').join('、');
+        history.replaceState(null, '', '#' + (i + 1));
+    }
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    });
+    document.getElementById('prev').onclick = function () { show(i - 1); };
+    document.getElementById('next').onclick = function () { show(i + 1); };
+    show(i);
+})();
+</script>
+</body>
+</html>
